@@ -51,7 +51,7 @@ class ConfigHelper extends DrupalCIHelperBase {
       $handle = fopen($filename, "r");
       if ($handle) {
         while (($line = fgets($handle)) !== false) {
-          $options[] = $line;
+          $options[] = str_replace(array("\r", "\n"), "", $line);
         }
       }
       fclose($handle);
@@ -94,10 +94,15 @@ class ConfigHelper extends DrupalCIHelperBase {
    */
   public function getCurrentEnvVars() {
     $current = array();
-    foreach ($_ENV as $key => $value)  {
-      if (preg_match('/^DCI_/', $key )) {
-        $current[$key] = $value;
+    if (!empty($_ENV)) {
+      foreach ($_ENV as $key => $value)  {
+        if (preg_match('/^DCI_/', $key )) {
+          $current[$key] = $value;
+        }
       }
+    }
+    else {
+      // TODO: Error message regarding ensuring 'E' is set in the server's "variables_order" config setting.
     }
     return $current;
   }
@@ -108,6 +113,15 @@ class ConfigHelper extends DrupalCIHelperBase {
   public function setConfigVariable($key, $value) {
     $config = $this->getCurrentConfigSetParsed();
     $config[$key] = $value;
+    $this->writeConfig($config);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function clearConfigVariable($key) {
+    $config = $this->getCurrentConfigSetParsed();
+    unset($config[$key]);
     $this->writeConfig($config);
   }
 

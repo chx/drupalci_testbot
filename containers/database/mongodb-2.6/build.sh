@@ -13,4 +13,3 @@ docker ps | grep "drupalci/db-mongodb-2.6" | awk '{print $1}' | grep -v CONTAINE
 docker ps -a | grep "drupalci/db-mongodb-2.6" | awk '{print $1}' | grep -v CONTAINER | xargs -n1 -I {} sudo docker rm {}
 
 docker build --rm=${DCI_REMOVEINTCONTAINERS} -t drupalci/db-mongodb-2.6 .
-

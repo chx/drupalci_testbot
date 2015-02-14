@@ -12,32 +12,32 @@ then
 fi
 
 
-TAG="drupalci/db-mongodb-2.6"
-NAME="drupaltestbot-db-mongodb-2.6"
+TAG="drupalci/db-pgsql-9.3"
+NAME="drupaltestbot-db-pgsql-9.3"
 STALLED=$(docker ps -a | grep ${TAG} | grep Exit | awk '{print $1}')
 RUNNING=$(docker ps | grep ${TAG} | grep 5432)
 if [[ $RUNNING != "" ]]
   then
-    echo "Found database container:" 
+    echo "Found database container:"
     echo "$RUNNING already running..."
     exit 0
   elif [[ $STALLED != "" ]]
     then
     echo "Found old container $STALLED. Removing..."
     docker rm $STALLED
-    DCI_SQLCONT=(/tmp/tmp.*"mongodb-2.6")
+    DCI_SQLCONT=(/tmp/tmp.*"pgsql-9.3")
     if ( ls -d "$DCI_SQLCONT" > /dev/null ); then
       umount -f "$DCI_SQLCONT" || /bin/true
       rm -fr "$DCI_SQLCONT" || /bin/true
     fi
 fi
 
-TMPDIR=$(mktemp -d --suffix=mongodb-2.6)
+TMPDIR=$(mktemp -d --suffix=pgsql-9.3)
 mount -t tmpfs -o size=16000M tmpfs $TMPDIR
 
-docker run -d -p=27017 --name=${NAME} -v="$TMPDIR":/data/db ${TAG}
+docker run -d -p=5432 --name=${NAME} -v="$TMPDIR":/var/lib/postgresql ${TAG}
 CONTAINER_ID=$(docker ps | grep ${TAG} | awk '{print $1}')
 
 echo "CONTAINER STARTED: $CONTAINER_ID"
 
-docker ps | grep "drupalci/db-mongodb-2.6"
+docker ps | grep "drupalci/db-pgsql-9.3"

@@ -150,6 +150,8 @@ case $DCI_DBTYPE in
            ;;
            9.1)  DCI_DBCONTAINER=${DCI_DBCONTAINER:-"drupaltestbot-db-pgsql-9.1"}
            ;;
+           9.3)  DCI_DBCONTAINER=${DCI_DBCONTAINER:-"drupaltestbot-db-pgsql-9.3"}
+           ;;
          esac
      fi
      DBPORT="5432"
@@ -357,6 +359,7 @@ if [[ $DCI_DEPENDENCIES_GIT = "" ]]
      ARRAY=($(echo "${DCI_DEPENDENCIES_GIT}" | tr ";" "\n"))
      mkdir -p ${DCI_BUILDSDIR}/${DCI_IDENTIFIER}/${DCI_MODULESPATH}
      cd ${DCI_BUILDSDIR}/${DCI_IDENTIFIER}/${DCI_MODULESPATH}
+     echo "${ARRAY}"
      for row in ${ARRAY[@]}
       do
       read gurl gbranch <<<$(echo "${row}" | tr "," " ");
