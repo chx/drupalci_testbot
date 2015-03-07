@@ -54,7 +54,7 @@ class TravisJob extends JobBase {
   // Placeholder to store the auto-generated bootstrap script
   protected $script = "";
 
-  protected $allowed_arguments = array(
+  public $allowed_arguments = array(
     'DCI_TravisFile',
     'DCI_Namespace',
     'DCI_TravisCommands',
@@ -62,23 +62,23 @@ class TravisJob extends JobBase {
     'DCI_Privileged',
   );
 
-  protected $default_arguments = array(
+  public $default_arguments = array(
     'DCI_TravisFile' => '.travis.yml',
   );
 
-  protected $required_arguments = array(
+  public $required_arguments = array(
     'DCI_TravisFile' => 'build_vars:travis_filename',
   );
 
   public function build_steps() {
     return array(
       'validate',
-      'checkout',
-      'environment',
-         //'setup',
+        //'checkout',
+        //'environment',
+      'setup',
       //'install',
       //'validate_install',
-      'execute',
+        //'execute',
       //'complete',
       //'success',
       //'failure'
@@ -126,7 +126,7 @@ class TravisJob extends JobBase {
       $permutation->setNamespace($namespace);
       $permutation->setLanguage($language . ':' . $language_version);
       $permutation->setCommand($command);
-      if (!empty($this->arguments['DCI_Privileged'])) {
+      if (!empty($this->build_vars['DCI_Privileged'])) {
         $permutation->setPrivileged(true);
       }
       $permutation->addServices($services);
@@ -141,17 +141,6 @@ class TravisJob extends JobBase {
         $this->script .= $line;
       }
     }
-  }
-
-  public function setup() {
-    // Generate a local copy of the codebase to be tested
-    // Check if we have an environment variable specifying the codebase location (Jenkins)
-    // Check if we have a DCI config variable specifying the test directory location
-    // Generate a copy of the codebase (either via git checkout, or local copy
-      // Do we need to have a variable that determines whether you operate on local codebase or not?
-      //
-
-
   }
 
   public function execute() {

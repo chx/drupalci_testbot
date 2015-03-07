@@ -8,6 +8,7 @@
 namespace DrupalCI\Console\Jobs\Job\Simpletest;
 
 use DrupalCI\Console\Helpers\ContainerHelper;
+use DrupalCI\Console\Jobs\Job\Component\EnvironmentValidator;
 use DrupalCI\Console\Jobs\Job\JobBase;
 use Symfony\Component\Finder\Tests\Iterator\DateRangeFilterIteratorTest;
 
@@ -48,7 +49,7 @@ class SimpletestJob extends JobBase {
    *  DCI_CONCURRENCY:   Default is '4'  #How many cpus to use per run
    *  DCI_RUNSCRIPT:     Command to be executed
    */
-  protected $available_arguments = array(
+  public $available_arguments = array(
     'DCI_PATCH',
     'DCI_DEPENDENCIES',
     'DCI_DEPENDENCIES_GIT',
@@ -77,9 +78,9 @@ class SimpletestJob extends JobBase {
     'DCI_RUNSCRIPT',
   );
 
-  protected $default_arguments = array();
+  public $default_arguments = array();
 
-  protected $required_arguments = array(
+  public $required_arguments = array(
     'DCI_DBTYPE' => 'environment:db',
     'DCI_DBVER' => 'environment:db',
     'DCI_PHPVERSION' => 'environment:php',
@@ -103,38 +104,25 @@ class SimpletestJob extends JobBase {
   protected $variables = array();
 
   public function environment() {
-    $this->build_container_names();
+    $this->output->write("<comment>Validating environment parameters ...</comment>");
+    // The 'environment' step determines which containers are going to be
+    // required, validates that the appropriate container images exist, and
+    // starts any required service containers.
+    $validator = new EnvironmentValidator();
+    $validator->build_container_names($this);
+
     $containers = $this->build_vars["DCI_Container_Images"];
+
     foreach ($containers['php'] as $phpversion => $container) {
       // TODO: Fix this after moving to the new container stack
       // $containers['php'][$phpversion] = $container . "-web";
       $containers['php'][$phpversion] = "drupalci/web-" . $phpversion;
     }
     $this->build_vars["DCI_Container_Images"] = $containers;
-    if (!$this->validate_container_names()) {
+    if (!$validator->validate_container_names($this)) {
       return -1;
     }
-    return;
-  }
-
-  public function setup() {
-    // Start up any linked service containers that need to be running, if they
-    // are not running already.
-    $output = '';
-    foreach ($this->build_vars['DCI_Container_Images']['db'] as $image) {
-      // Start an instance of $image['name'].
-      $helper = new ContainerHelper();
-      // TODO: Ensure container is not already running!
-      $helper->startContainer($image);
-      $need_sleep = TRUE;
-    }
-    // Pause to allow any container services (e.g. mysql) to start up.
-    // TODO: This currently pauses even if the container was already found.  Do we need the
-    // start_container.sh script to throw an error return code?
-    if (!empty($need_sleep)) {
-      echo "Sleeping 10 seconds to allow container services to start.\n";
-      sleep(10);
-    }
+    $validator->start_service_containers($this);
     return;
   }
 
@@ -145,52 +133,42 @@ class SimpletestJob extends JobBase {
     // methods of kicking off execution of the script, which will allow us to
     // remove the validation code from the bash script itself (in favor of
     // validate step within the job classes.
+    // TODO: This presumes only one db type; but may need to be expanded for multiple.
     if (empty($this->job_definition)) {
       return;
     }
     $definition = $this->job_definition['environment'];
     // We need to set a number of parameters on the command line in order to
     // prevent the bash script from overriding them
-    $dbtype = explode("-", $definition['db'][0]);
-    $phpver = $definition['php'][0];
-    $cmd_prefix = "DCI_DBTYPE=" . $dbtype[0] . " DCI_DBVER=" . $dbtype[1] . " DCI_PHPVERSION=" . $phpver . " ";
-    $this->cmd_prefix = $cmd_prefix;
+    $cmd_prefix = "";
+    if (!empty($definition['db'])) {
+      $dbtype = explode("-", $definition['db'][0]);
+      $cmd_prefix = "DCI_DBTYPE=" . $dbtype[0] . " DCI_DBVER=" . $dbtype[1];
+    }
+    else {
+      $cmd_prefix = "DCI_DBTYPE= DCI_DBVER= ";
+    }
 
+    $phpver = (!empty($definition['php'])) ? $definition['php'][0] : "";
+
+    $cmd_prefix .= (!empty($phpver)) ? " DCI_PHPVERSION=$phpver " : " DCI_PHPVERSION= ";
+
+    if (!empty($this->job_definition['variables'])) {
+      $buildvars = $this->job_definition['variables'];
+      foreach ($buildvars as $key => $value) {
+        $cmd_prefix .= "$key=$value ";
+      }
+    }
+
+    $this->cmd_prefix = $cmd_prefix;
   }
 
   protected $cmd_prefix = "";
-
-  public function install() {
-    // Installation is handled by the bash script.
-    return;
-  }
-
-  public function validate_install() {
-    // Validate that any required linked containers are actually running.
-    return;
-  }
 
   public function execute() {
     $cmd = "sudo " . $this->cmd_prefix . "./containers/web/run.sh";
     // Execute the simpletest testing bash script
     $this->shell_command($cmd);
-    return;
-  }
-
-  public function complete() {
-    // Run any post-execute clean-up or notification scripts, as desired.
-    return;
-  }
-
-  public function success() {
-    // Run any post-execute clean-up or notification scripts, which are
-    // intended to be run only upon success.
-    return;
-  }
-
-  public function failure() {
-    // Run any post-execute clean-up or notification scripts, which are
-    // intended to be run only upon failure.
     return;
   }
 
